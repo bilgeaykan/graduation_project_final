@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:520px;margin:60px auto;">
+  <div class="cardhead">
+    <h2>Login</h2>
+    <div class="muted">AI + Cybersecurity Dashboard</div>
+  </div>
+
+  {% if error %}
+    <div class="muted" style="padding:0 18px 12px 18px;">❌ {{ error }}</div>
+  {% endif %}
+
+  <form method="post"
+        style="padding:0 18px 18px 18px; display:grid; gap:10px;">
+    <input class="input" name="username" placeholder="Username" required>
+    <input class="input" name="password" type="password" placeholder="Password" required>
+    <button class="btn btn-ghost" type="submit">Sign in</button>
+  </form>
+
+  <div class="muted" style="padding:0 18px 18px 18px;">
+    Default admin: <b>admin</b> / <b>admin123</b>
+  </div>
+</div>
+{% endblock %}
