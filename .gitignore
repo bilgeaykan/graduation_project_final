@@ -1,0 +1,19 @@
+﻿.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+*.log
+.ipynb_checkpoints/
+
+# runtime/generated data
+data/fernet.key
+data/users.db
+data/*.enc
+data/*.chain
+data/timeline.csv
+data/uploads/
+
+# videos
+*.mp4

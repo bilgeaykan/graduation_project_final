@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Behavior Detection Dashboard{% endblock %}
+{% block content %}
+{% set u = session.get("user", {}) %}
+
+<div class="layout">
+  <!-- SIDEBAR (Streamlit vibe) -->
+  <aside class="sidebar">
+    <div class="side-title">⚙️ Mode & Settings</div>
+
+    <div class="side-card">
+      <div class="side-label">Choose Mode</div>
+      <select class="input" id="mode">
+        <option value="dashboard">📊 Logs / Dashboard Only</option>
+        <option value="upload">🎞️ Analyze Uploaded Video</option>
+        <option value="file">📁 Analyze Existing Video File</option>
+        <option value="camera">📷 Live Camera Analysis</option>
+      </select>
+
+      <div class="side-label mt">Model & Detection</div>
+      <div class="row2">
+        <input class="input" id="conf" type="number" min="0.1" max="0.9" step="0.05" value="0.40" />
+        <select class="input" id="resizeW">
+          <option>960</option><option selected>1280</option><option>1600</option>
+        </select>
+      </div>
+
+      <div class="side-label mt">Tracker</div>
+      <select class="input" id="tracker">
+        <option value="bytetrack.yaml" selected>ByteTrack (recommended)</option>
+        <option value="botsort.yaml">BoT-SORT</option>
+      </select>
+
+      <div class="side-label mt">Pose (optional)</div>
+      <label class="check">
+        <input type="checkbox" id="usePose" checked />
+        <span>Use MediaPipe Pose</span>
+      </label>
+
+      <div class="side-label mt">Heuristics</div>
+      <div class="row2">
+        <input class="input" id="speedTh" type="number" value="25" />
+        <input class="input" id="distTh" type="number" value="80" />
+      </div>
+      <div class="row2">
+        <input class="input" id="iouTh" type="number" step="0.05" value="0.30" />
+        <input class="input" id="cooldown" type="number" value="30" />
+      </div>
+
+      <button class="btn btn-ghost mt" id="btnSaveCfg">Save Settings</button>
+      <div class="muted tiny mt2" id="cfgNote">Settings apply to next analysis loop.</div>
+    </div>
+
+    <div class="side-card">
+      <div class="side-title2">🧾 Quick Actions</div>
+      <button class="btn btn-ghost" id="btnStart">▶ Start Live Analyzer</button>
+      <button class="btn btn-ghost" id="btnStop">⏸ Stop</button>
+
+      {% if u.get("role") == "admin" %}
+        <button class="btn btn-danger mt2" id="btnCamera">🧯 Release / Reopen Camera</button>
+        <button class="btn btn-ghost mt2" id="btnClear">🧹 Clear Timeline</button>
+        <a class="btn btn-ghost mt2" href="{{ url_for('verify') }}">🔎 Verify Integrity</a>
+        <a class="btn btn-ghost mt2" href="{{ url_for('download_logs_enc') }}">⬇ Encrypted Logs</a>
+      {% endif %}
+
+      <a class="btn btn-ghost mt2" href="{{ url_for('download_timeline') }}">⬇ Timeline CSV</a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="grid2">
+      <!-- VIDEO -->
+      <section class="card">
+        <div class="cardhead">
+          <div class="row">
+            <h2>🎥 Video / Live Analysis</h2>
+            <span id="netStatus" class="chip chip-live">LIVE</span>
+          </div>
+
+          <div class="metrics">
+            <div class="metric"><div class="k">FPS</div><div class="v" id="mFps">-</div></div>
+            <div class="metric"><div class="k">Frame</div><div class="v" id="mFrame">-</div></div>
+            <div class="metric"><div class="k">Camera</div><div class="v" id="mCam">-</div></div>
+            <div class="metric"><div class="k">Analysis</div><div class="v" id="mAna">-</div></div>
+          </div>
+
+          <div class="panel-actions">
+            <input class="input" id="sourcePath" placeholder="(File mode) video path e.g. test.mp4" />
+            <button class="btn btn-ghost" id="btnApplyMode">Apply Mode</button>
+          </div>
+
+          <!-- ✅ NEW: Upload & Select video (no path typing) -->
+          <div class="panel-actions" style="margin-top:10px;">
+            <input class="input" type="file" id="videoFile" accept="video/*">
+            <button class="btn btn-ghost" id="btnUpload">Upload & Select</button>
+
+            <select class="input" id="serverVideos" style="min-width:220px;">
+              <option value="">Select uploaded video…</option>
+            </select>
+            <button class="btn btn-ghost" id="btnSelectVideo">Use Selected</button>
+          </div>
+        </div>
+
+        <div class="video-wrap">
+          <img class="video" src="{{ url_for('video_feed') }}" alt="stream"/>
+          <div id="camOverlay" class="cam-overlay">
+            <div>
+              <div class="big">Camera is OFF</div>
+              <div class="small">Click “Start Live Analyzer” to begin.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Timeline like Streamlit table -->
+        <div class="cardhead">
+          <div class="row">
+            <h2>🕒 Event Timeline (Frame-by-Frame Evidence)</h2>
+            <div class="muted tiny">This table is your jury-proof evidence (time/frame + decision).</div>
+          </div>
+          <div class="panel-actions">
+            <input class="input" id="filterId" placeholder="Filter ID (e.g. 3)" />
+            <select class="input" id="filterBehavior">
+              <option value="">All behaviors</option>
+              <option>RUN</option><option>FIGHT</option><option>FALL</option>
+              <option>MOTIONLESS</option><option>LOITERING</option><option>UNKNOWN</option>
+            </select>
+            <button class="btn btn-ghost" id="btnApplyFilter">Apply</button>
+          </div>
+        </div>
+
+        <div class="tablewrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>t(sec)</th><th>frame</th><th>id</th><th>state</th>
+                <th>behavior</th><th>score</th><th>speed</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr><td colspan="7" class="muted">Waiting for events...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- LOGS (Tabs like Streamlit CSV/JSON) -->
+      <section class="card">
+        <div class="cardhead">
+          <h2>🧾 Logs</h2>
+          <div class="tabs">
+            <button class="tab active" data-tab="csv">CSV</button>
+            <button class="tab" data-tab="json">JSON</button>
+          </div>
+        </div>
+
+        <div class="tabpanel" id="tab-csv">
+          <div class="panel-actions">
+            <input class="input" id="logPid" placeholder="Filter person_id (e.g. 3)"/>
+            <input class="input" id="logBeh" placeholder="Behavior filter (e.g. RUN)"/>
+            <button class="btn btn-ghost" id="btnLogFilter">Apply</button>
+          </div>
+          <div class="tablewrap">
+            <table class="table">
+              <thead id="csvHead"></thead>
+              <tbody id="csvBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="tabpanel hidden" id="tab-json">
+          <pre class="jsonbox" id="jsonBox">Loading...</pre>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+{% endblock %}

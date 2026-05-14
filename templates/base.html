@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>{% block title %}Dashboard{% endblock %}</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="wrap">
+
+    {% if request.path != '/login' %}
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">🛡️</div>
+        <div>
+          <div class="h1">Suspicious Behavior Detection</div>
+          <div class="sub">AI + Cybersecurity (Encrypted, Tamper-evident logs)</div>
+        </div>
+      </div>
+
+      <div class="userbox">
+        {% set u = session.get("user", {}) %}
+        <span class="pill">
+          user: {{ u.get("username","?") }} • role: {{ u.get("role","user") }}
+        </span>
+        <a class="btn btn-ghost" href="{{ url_for('logout') }}">Logout</a>
+      </div>
+    </header>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
