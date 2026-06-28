@@ -21,3 +21,4 @@ An AI-powered suspicious behavior detection system developed as an undergraduate
 - MediaPipe
 - Computer Vision
 - Artificial Intelligence
+- Cyber Security
