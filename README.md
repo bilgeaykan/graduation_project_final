@@ -10,7 +10,7 @@ An AI-powered suspicious behavior detection system developed as an undergraduate
 - Person detection using YOLO
 - Pose estimation with MediaPipe
 - Suspicious behavior analysis
-- Fall and fight detection
+- Fall, Run and Fight detection
 - Secure encrypted logging
 - Web-based monitoring interface
 
